@@ -1,0 +1,49 @@
+name: AUR Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  aur:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: pacman -Sy --noconfirm base-devel git rust cargo openssh curl
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+
+      - name: Generate PKGBUILD
+        run: |
+          PKGVER=${GITHUB_REF_NAME#v}
+          TAR="https://github.com/geri1701/pw-duck/archive/refs/tags/v$PKGVER.tar.gz"
+          SHA256=$(curl -Ls "$TAR" | sha256sum | cut -d' ' -f1)
+
+          sed \
+            -e "s/@PKGVER@/$PKGVER/" \
+            -e "s/@SHA256@/$SHA256/" \
+            aur/pw-duck/PKGBUILD.in > PKGBUILD
+
+      - name: Generate .SRCINFO
+        run: makepkg --printsrcinfo > .SRCINFO
+
+      - name: Push to AUR
+        run: |
+          git clone ssh://aur@aur.archlinux.org/pw-duck.git aur
+          cd aur
+          cp ../PKGBUILD ../.SRCINFO .
+          git add PKGBUILD .SRCINFO
+          git -c user.name="geri1701" -c user.email="geri@sdf.org" commit -m "Update to ${GITHUB_REF_NAME}"
+          git push
+
