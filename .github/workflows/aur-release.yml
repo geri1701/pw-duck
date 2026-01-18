@@ -1,75 +1,85 @@
 name: AUR Release
 
 on:
-push:
-tags:
-- "v*"
+  push:
+    tags:
+      - "v*"
 
 jobs:
-aur:
-runs-on: ubuntu-latest
-container:
-image: archlinux
+  aur:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
 
-steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
-    with:
-      fetch-depth: 0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-  - name: Install deps
-    run: |
-      pacman -Sy --noconfirm --noprogressbar \
-        base-devel git openssh curl sed coreutils
-    shell: bash
+      - name: Install deps
+        run: |
+          set -euo pipefail
+          pacman -Sy --noconfirm --noprogressbar \
+            base-devel git openssh curl sed coreutils
+        shell: bash
 
-  - name: Prepare SSH
-    run: |
-      set -euo pipefail
-      mkdir -p ~/.ssh
-      chmod 700 ~/.ssh
-      printf '%s\n' "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-      chmod 600 ~/.ssh/id_ed25519
-      ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
-    shell: bash
+      - name: Prepare SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
+        shell: bash
 
-  - name: Generate PKGBUILD from template
-    run: |
-      set -euo pipefail
-      PKGVER="${GITHUB_REF_NAME#v}"
-      TAR="https://github.com/${{ github.repository }}/archive/refs/tags/v${PKGVER}.tar.gz"
-      SHA256="$(curl -Ls "$TAR" | sha256sum | awk '{print $1}')"
+      - name: Generate PKGBUILD from template
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          PKGVER="${GITHUB_REF_NAME#v}"
+          TAR="https://github.com/${{ github.repository }}/archive/refs/tags/v${PKGVER}.tar.gz"
+          SHA256="$(curl -Ls "$TAR" | sha256sum | awk '{print $1}')"
 
-      test -f aur/pw-duck/PKGBUILD.in
+          if [ ! -f aur/pw-duck/PKGBUILD.in ]; then
+            echo "PKGBUILD template not found: aur/pw-duck/PKGBUILD.in"
+            exit 1
+          fi
 
-      sed \
-        -e "s/@PKGVER@/${PKGVER}/" \
-        -e "s/@SHA256@/${SHA256}/" \
-        aur/pw-duck/PKGBUILD.in > PKGBUILD
-    shell: bash
+          sed \
+            -e "s/@PKGVER@/${PKGVER}/" \
+            -e "s/@SHA256@/${SHA256}/" \
+            aur/pw-duck/PKGBUILD.in > PKGBUILD
+        shell: bash
 
-  - name: Generate .SRCINFO (non-root)
-    run: |
-      set -euo pipefail
-      useradd -m builduser
-      chown -R builduser:builduser .
-      sudo -u builduser makepkg --printsrcinfo > .SRCINFO
-    shell: bash
+      - name: Generate .SRCINFO (non-root)
+        run: |
+          set -euo pipefail
+          # create a non-root user (if not exists) and make it owner of the workspace
+          useradd -m -s /bin/bash builduser || true
+          chown -R builduser:builduser .
+          # run makepkg as the non-root user (sudo is not guaranteed to be installed)
+          su - builduser -s /bin/bash -c 'makepkg --printsrcinfo > .SRCINFO'
+        shell: bash
 
-  - name: Push to AUR
-    run: |
-      set -euo pipefail
-      git clone ssh://aur@aur.archlinux.org/pw-duck.git aur
-      cd aur
-      cp ../PKGBUILD ../.SRCINFO .
+      - name: Push to AUR
+        env:
+          GIT_SSH_COMMAND: 'ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=~/.ssh/known_hosts -F /dev/null'
+        run: |
+          set -euo pipefail
+          git clone ssh://aur@aur.archlinux.org/pw-duck.git aur
+          cd aur
+          cp ../PKGBUILD ../.SRCINFO .
 
-      git config user.name "geri1701"
-      git config user.email "geri@sdf.org"
+          git config user.name "geri1701"
+          git config user.email "geri@sdf.org"
 
-      git add PKGBUILD .SRCINFO
-      git diff --cached --quiet && { echo "No changes to push."; exit 0; }
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet && { echo "No changes to push."; exit 0; }
 
-      git commit -m "Update to ${GITHUB_REF_NAME}"
-      git push
-    shell: bash
+          git commit -m "Update to ${GITHUB_REF_NAME}"
+          git push
+        shell: bash
 
