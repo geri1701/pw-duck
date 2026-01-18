@@ -20,7 +20,8 @@ jobs:
       - name: Install deps
         run: |
           set -euo pipefail
-          pacman -Sy --noconfirm --noprogressbar \
+          pacman -Syu --noconfirm --noprogressbar archlinux-keyring
+          pacman -S --noconfirm --noprogressbar \
             base-devel git openssh curl sed coreutils
         shell: bash
 
@@ -82,4 +83,3 @@ jobs:
           git commit -m "Update to ${GITHUB_REF_NAME}"
           git push
         shell: bash
-
