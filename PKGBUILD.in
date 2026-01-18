@@ -1,0 +1,21 @@
+pkgname=pw-duck
+pkgver=@PKGVER@
+pkgrel=1
+pkgdesc="Automatic audio ducking for PipeWire on Linux"
+arch=('x86_64')
+url="https://github.com/geri1701/pw-duck"
+license=('MIT')
+depends=('pipewire')
+makedepends=('rust' 'cargo')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/geri1701/pw-duck/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('@SHA256@')
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  cargo build --release
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+  install -Dm755 target/release/pw-duck "$pkgdir/usr/bin/pw-duck"
+}
