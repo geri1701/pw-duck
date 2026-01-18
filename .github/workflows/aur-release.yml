@@ -20,8 +20,9 @@ jobs:
       - name: Install deps
         run: |
           set -euo pipefail
-          pacman -Syu --noconfirm --noprogressbar archlinux-keyring
-          pacman -S --noconfirm --noprogressbar \
+          pacman -Sy --noconfirm --noprogressbar archlinux-keyring
+          pacman -Syu --noconfirm --noprogressbar
+          pacman -S --noconfirm --noprogressbar --needed \
             base-devel git openssh curl sed coreutils
         shell: bash
 
