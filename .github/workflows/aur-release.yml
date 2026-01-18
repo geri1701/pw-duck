@@ -1,49 +1,75 @@
 name: AUR Release
 
 on:
-  push:
-    tags:
-      - "v*"
+push:
+tags:
+- "v*"
 
 jobs:
-  aur:
-    runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
+aur:
+runs-on: ubuntu-latest
+container:
+image: archlinux
 
-    steps:
-      - uses: actions/checkout@v4
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
 
-      - name: Install deps
-        run: pacman -Sy --noconfirm base-devel git rust cargo openssh curl
+  - name: Install deps
+    run: |
+      pacman -Sy --noconfirm --noprogressbar \
+        base-devel git openssh curl sed coreutils
+    shell: bash
 
-      - name: Prepare SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+  - name: Prepare SSH
+    run: |
+      set -euo pipefail
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      printf '%s\n' "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+      chmod 600 ~/.ssh/id_ed25519
+      ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
+    shell: bash
 
-      - name: Generate PKGBUILD
-        run: |
-          PKGVER=${GITHUB_REF_NAME#v}
-          TAR="https://github.com/geri1701/pw-duck/archive/refs/tags/v$PKGVER.tar.gz"
-          SHA256=$(curl -Ls "$TAR" | sha256sum | cut -d' ' -f1)
+  - name: Generate PKGBUILD from template
+    run: |
+      set -euo pipefail
+      PKGVER="${GITHUB_REF_NAME#v}"
+      TAR="https://github.com/${{ github.repository }}/archive/refs/tags/v${PKGVER}.tar.gz"
+      SHA256="$(curl -Ls "$TAR" | sha256sum | awk '{print $1}')"
 
-          sed \
-            -e "s/@PKGVER@/$PKGVER/" \
-            -e "s/@SHA256@/$SHA256/" \
-            aur/pw-duck/PKGBUILD.in > PKGBUILD
+      test -f aur/pw-duck/PKGBUILD.in
 
-      - name: Generate .SRCINFO
-        run: makepkg --printsrcinfo > .SRCINFO
+      sed \
+        -e "s/@PKGVER@/${PKGVER}/" \
+        -e "s/@SHA256@/${SHA256}/" \
+        aur/pw-duck/PKGBUILD.in > PKGBUILD
+    shell: bash
 
-      - name: Push to AUR
-        run: |
-          git clone ssh://aur@aur.archlinux.org/pw-duck.git aur
-          cd aur
-          cp ../PKGBUILD ../.SRCINFO .
-          git add PKGBUILD .SRCINFO
-          git -c user.name="geri1701" -c user.email="geri@sdf.org" commit -m "Update to ${GITHUB_REF_NAME}"
-          git push
+  - name: Generate .SRCINFO (non-root)
+    run: |
+      set -euo pipefail
+      useradd -m builduser
+      chown -R builduser:builduser .
+      sudo -u builduser makepkg --printsrcinfo > .SRCINFO
+    shell: bash
+
+  - name: Push to AUR
+    run: |
+      set -euo pipefail
+      git clone ssh://aur@aur.archlinux.org/pw-duck.git aur
+      cd aur
+      cp ../PKGBUILD ../.SRCINFO .
+
+      git config user.name "geri1701"
+      git config user.email "geri@sdf.org"
+
+      git add PKGBUILD .SRCINFO
+      git diff --cached --quiet && { echo "No changes to push."; exit 0; }
+
+      git commit -m "Update to ${GITHUB_REF_NAME}"
+      git push
+    shell: bash
 
