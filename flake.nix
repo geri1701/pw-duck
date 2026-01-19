@@ -10,8 +10,41 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
+
+        pw-duck = pkgs.rustPlatform.buildRustPackage {
+          pname = "pw-duck";
+          version = "0.1.0";
+
+          src = self;
+
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
+
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+            llvmPackages.clang
+          ];
+
+          buildInputs = with pkgs; [
+            pipewire
+          ];
+
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+          PKG_CONFIG_PATH = "${pkgs.pipewire.dev}/lib/pkgconfig";
+        };
       in
       {
+        packages = {
+          default = pw-duck;
+          pw-duck = pw-duck;
+        };
+
+        apps = {
+          default = flake-utils.lib.mkApp { drv = pw-duck; exePath = "/bin/pw-duck"; };
+          pw-duck = flake-utils.lib.mkApp { drv = pw-duck; exePath = "/bin/pw-duck"; };
+        };
+
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             rustc cargo
