@@ -24,7 +24,7 @@ optdepends=(
   'gnome-shell-extension-appindicator: tray support on GNOME Shell'
 )
 conflicts=('pw-duck-git')
-options=('!lto')
+options=('!lto' '!debug')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('6ce941e5f690d3e7601bc2fea9ce5ac33094c58111e1732b84f21c327fabf2dc')
 
