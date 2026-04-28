@@ -212,13 +212,13 @@ cargo test --release --locked --features gui
 
 GTK4 is therefore a hard dependency for the AUR package, and `Tuner: open` works by default. The non-GUI build remains useful for development, tests, and intentional headless builds.
 
-Before uploading to AUR, replace `sha256sums=('SKIP')` in `PKGBUILD` and `.SRCINFO` with the real checksum of the GitHub release tarball after the final tag exists:
+For future releases, update the AUR checksum after the final GitHub tag exists:
 
 ```bash
 ./scripts/update-aur-checksum.sh
 ```
 
-The script downloads `https://github.com/geri1701/pw-duck/archive/refs/tags/v${pkgver}.tar.gz`, writes the SHA-256 checksum to `PKGBUILD` and `.SRCINFO`, and exits deliberately while the tag is not yet published.
+The script downloads `https://github.com/geri1701/pw-duck/archive/refs/tags/v${pkgver}.tar.gz`, writes the SHA-256 checksum to `PKGBUILD` and `.SRCINFO`, and exits deliberately while the tag is not yet published. For `v0.2.0`, the checksum is already set.
 
 ## Troubleshooting
 
