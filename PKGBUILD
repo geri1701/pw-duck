@@ -8,6 +8,7 @@ url="https://github.com/geri1701/pw-duck"
 license=('MIT')
 depends=(
   'gtk4'
+  'hicolor-icon-theme'
   'libpulse'
   'pipewire'
   'pipewire-pulse'
@@ -23,6 +24,7 @@ optdepends=(
   'gnome-shell-extension-appindicator: tray support on GNOME Shell'
 )
 conflicts=('pw-duck-git')
+options=('!lto')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('6040fc7d0506817d061315ef70b32ce8aa87c389eda1f3489abc34a2b3b2d667')
 
