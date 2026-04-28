@@ -203,6 +203,20 @@ The Nix package builds with the `gui` feature enabled, so the graphical tuner is
 
 ## AUR
 
+Arch Linux users can install or update the stable release from AUR:
+
+```bash
+paru -S pw-duck
+```
+
+If `pw-duck` is already installed, the normal system update is enough after the AUR package has been updated:
+
+```bash
+paru -Syu
+```
+
+Use the stable package `pw-duck` for normal use. A `pw-duck-git` package, if installed, follows the current Git branch instead of the tagged release and is meant for development/testing.
+
 The normal AUR package `pw-duck` is a full desktop build and uses:
 
 ```bash

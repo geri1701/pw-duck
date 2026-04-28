@@ -365,6 +365,13 @@ impl PwDuckTray {
                 | TrayRunState::Ducked
         )
     }
+
+    fn request_quit(&mut self) {
+        self.quitting = true;
+        self.state = TrayRunState::Stopping;
+        self.message = "Quitting …".into();
+        self.send(TrayCommand::Quit);
+    }
 }
 
 impl ksni::Tray for PwDuckTray {
@@ -427,8 +434,6 @@ impl ksni::Tray for PwDuckTray {
     }
 
     fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
-        let tx_quit = self.command_tx.clone();
-
         vec![
             StandardItem {
                 label: "Info:".into(),
@@ -499,11 +504,10 @@ impl ksni::Tray for PwDuckTray {
             ksni::MenuItem::Separator,
             StandardItem {
                 label: "Quit".into(),
+                enabled: !self.quitting,
                 disposition: Disposition::Alert,
                 activate: Box::new(move |this: &mut Self| {
-                    this.state = TrayRunState::Stopping;
-                    this.message = "Quitting …".into();
-                    let _ = tx_quit.send(TrayCommand::Quit);
+                    this.request_quit();
                 }),
                 ..Default::default()
             }
