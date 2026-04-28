@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=pw-duck
+GenericName=Audio Ducking
+Comment=Automatically duck non-voice audio while remote voice is active
+Exec=pw-duck tray
+Icon=pw-duck
+Terminal=false
+Categories=AudioVideo;Audio;
+Keywords=audio;ducking;pipewire;tray;voice;
+StartupNotify=false

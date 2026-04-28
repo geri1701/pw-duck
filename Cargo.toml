@@ -1,22 +1,31 @@
 [package]
 name = "pw-duck"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "Linux tray app that ducks non-voice audio while a configured remote voice stream is active"
 license = "MIT"
 authors = ["Gerhard Schwanzer <geri@sdf.org>"]
+readme = "README.md"
+homepage = "https://github.com/geri1701/pw-duck"
+repository = "https://github.com/geri1701/pw-duck"
+keywords = ["pipewire", "audio", "tray", "ducking"]
 
 [profile.dev]
 incremental = true
 
+[features]
+default = []
+gui = ["dep:gtk"]
+
 [dependencies]
 anyhow = "1"
-pipewire = "0.9"
 clap = { version = "4", features = ["derive"] }
-signal-hook = "0.3"
-regex = "1"
+ctrlc = "3"
 crossterm = "0.27"
-ratatui = "0.26"
-
-[features]
-dev-tools = []
-
+dirs = "5"
+ksni = { version = "0.3.4", default-features = false, features = ["blocking", "async-io"] }
+pipewire = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+gtk = { version = "0.11.3", package = "gtk4", default-features = false, features = ["v4_6"], optional = true }

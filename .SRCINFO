@@ -1,0 +1,22 @@
+pkgbase = pw-duck
+	pkgdesc = Linux tray app that ducks non-voice audio while remote voice is active
+	pkgver = 0.2.0
+	pkgrel = 1
+	url = https://github.com/geri1701/pw-duck
+	arch = x86_64
+	license = MIT
+	makedepends = cargo
+	makedepends = clang
+	makedepends = desktop-file-utils
+	makedepends = pkgconf
+	depends = gtk4
+	depends = libpulse
+	depends = pipewire
+	depends = pipewire-pulse
+	optdepends = wireplumber: recommended PipeWire session manager
+	optdepends = gnome-shell-extension-appindicator: tray support on GNOME Shell
+	conflicts = pw-duck-git
+	source = pw-duck-0.2.0.tar.gz::https://github.com/geri1701/pw-duck/archive/refs/tags/v0.2.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = pw-duck
