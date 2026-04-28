@@ -232,7 +232,7 @@ For future releases, update the AUR checksum after the final GitHub tag exists:
 ./scripts/update-aur-checksum.sh
 ```
 
-The script downloads `https://github.com/geri1701/pw-duck/archive/refs/tags/v${pkgver}.tar.gz`, writes the SHA-256 checksum to `PKGBUILD` and `.SRCINFO`, and exits deliberately while the tag is not yet published. For `v0.2.0`, the checksum is already set.
+The script downloads `https://github.com/geri1701/pw-duck/archive/refs/tags/v${pkgver}.tar.gz`, writes the SHA-256 checksum to `PKGBUILD` and `.SRCINFO`, and exits deliberately while the tag is not yet published. For the current release, the checksum is already set.
 
 ## Troubleshooting
 

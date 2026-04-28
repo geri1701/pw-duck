@@ -29,7 +29,7 @@
       {
         packages.default = pkgs.rustPlatform.buildRustPackage {
           pname = "pw-duck";
-          version = "0.2.0";
+          version = "0.2.1";
           src = source;
 
           cargoLock.lockFile = ./Cargo.lock;
