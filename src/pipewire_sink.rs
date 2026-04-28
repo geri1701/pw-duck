@@ -63,12 +63,11 @@ impl VirtualSink {
         Ok(())
     }
 
-    /// Keep the remote node alive instead of explicitly destroying it on drop.
+    /// Keep the remote node alive instead of destroying it during teardown.
     ///
-    /// This is a last-resort fail-safe for teardown: if a playback stream cannot
-    /// be moved away from the virtual sink, destroying the sink can terminate the
-    /// client stream. In that case it is safer to leak the temporary routing node
-    /// than to kill user audio.
+    /// If a playback stream cannot be moved away from the virtual sink, destroying
+    /// the sink can terminate the client stream. In that case it is safer to leave
+    /// the temporary routing node behind than to kill user audio.
     pub fn abandon(&mut self) {
         self.node.take();
     }

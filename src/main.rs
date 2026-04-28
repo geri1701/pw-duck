@@ -156,7 +156,7 @@ fn run_route_until_interrupted(
         |event| {
             match event {
             DuckingEvent::WaitingForSource => {
-                println!("Warte auf konfigurierte Voice-Quelle …")
+                println!("Waiting for configured voice source …")
             }
             DuckingEvent::Started {
                 label,
@@ -164,18 +164,18 @@ fn run_route_until_interrupted(
                 start_threshold,
                 hold_ms,
             } => println!(
-                "Routing aktiv. VAD target={label} threshold={threshold:.4} start={start_threshold:.4} hold={hold_ms}ms. Beenden mit Ctrl+C."
+                "Routing active. VAD target={label} threshold={threshold:.4} start={start_threshold:.4} hold={hold_ms}ms. Press Ctrl+C to stop."
             ),
             DuckingEvent::VoiceActive { level, percent } => {
                 println!("VOICE ACTIVE level={level:.4} → Ducking {percent}%")
             }
             DuckingEvent::VoiceInactive { level } => {
-                println!("VOICE INACTIVE level={level:.4} → Ducking aus")
+                println!("VOICE INACTIVE level={level:.4} → Ducking off")
             }
         }
         },
     )?;
-    println!("Beende Routing und stelle Ursprungszustand wieder her …");
+    println!("Stopping routing and restoring the previous state …");
     Ok(())
 }
 
@@ -195,7 +195,7 @@ fn print_status(runner: &SystemRunner) -> Result<()> {
     } else {
         println!("Default-Sink: {default_sink}");
     }
-    println!("Aktive Playback-Streams: {}", inputs.len());
+    println!("Active playback streams: {}", inputs.len());
     print_inputs(inputs);
 
     Ok(())
@@ -204,10 +204,10 @@ fn print_status(runner: &SystemRunner) -> Result<()> {
 fn print_sources(runner: &SystemRunner) -> Result<()> {
     let pulse = pulse::PulseCtl::new(runner);
     let inputs = pulse.sink_inputs()?;
-    println!("Aktuelle Playback-Streams:");
+    println!("Current playback streams:");
     print_inputs(inputs);
     println!();
-    println!("Quelle speichern: pw-duck select-source <sink-input-index>");
+    println!("Save source: pw-duck select-source <sink-input-index>");
     Ok(())
 }
 
@@ -229,7 +229,7 @@ fn select_source(runner: &SystemRunner, sink_input_index: u32) -> Result<()> {
     config.voice_source = Some(ConfiguredSource::from_identity(label.clone(), &identity));
     config.save()?;
 
-    println!("gespeichert: {label}");
+    println!("saved: {label}");
     println!("config: {}", Config::path()?.display());
     Ok(())
 }

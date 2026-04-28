@@ -130,11 +130,11 @@ fn adjust(settings: &mut DuckingSettings, row: Row, direction: i32) {
 fn draw(settings: DuckingSettings, selected: Row) -> Result<()> {
     let mut out = stdout();
     execute!(out, Clear(ClearType::All), MoveTo(0, 0)).context("draw tuner")?;
-    write_line(&mut out, "pw-duck Regler")?;
+    write_line(&mut out, "pw-duck Tuner")?;
     write_line(&mut out, "")?;
     write_line(
         &mut out,
-        "↑/↓ wählen · ←/→ ändern · q/Esc schließen · Änderungen wirken live über config.toml",
+        "↑/↓ select · ←/→ adjust · q/Esc close · changes apply live via config.toml",
     )?;
     write_line(&mut out, "")?;
 
@@ -145,7 +145,7 @@ fn draw(settings: DuckingSettings, selected: Row) -> Result<()> {
     write_line(&mut out, "")?;
     write_line(
         &mut out,
-        "Hinweis: Wenn es ohne Sprache ducked, Empfindlichkeit nach links reduzieren (Schwelle höher).",
+        "Hint: If it ducks without voice, move sensitivity left to raise the threshold.",
     )?;
     out.flush().context("flush tuner")
 }
@@ -160,19 +160,19 @@ fn draw_row(
         Row::Sensitivity => {
             let sensitivity = sensitivity_percent(settings.vad_threshold);
             let value = if vad::is_disabled_threshold(settings.vad_threshold) {
-                "  0%  AUS".to_string()
+                "  0%  OFF".to_string()
             } else {
                 format!(
-                    "{:>3}%  Schwelle {:.4}, Start {:.4}",
+                    "{:>3}%  threshold {:.4}, start {:.4}",
                     sensitivity,
                     settings.vad_threshold,
                     vad::start_threshold(settings.vad_threshold)
                 )
             };
-            ("Empfindlichkeit", value, sensitivity)
+            ("Sensitivity", value, sensitivity)
         }
         Row::DuckPercent => (
-            "Ducking-Lautstärke",
+            "Ducking volume",
             format!("{:>3}%", settings.duck_percent),
             settings.duck_percent,
         ),

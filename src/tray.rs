@@ -81,7 +81,7 @@ impl SingleInstanceGuard {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).with_context(|| {
                 format!(
-                    "Runtime-Verzeichnis für Tray-Lock anlegen: {}",
+                    "create runtime directory for tray lock: {}",
                     parent.display()
                 )
             })?;
@@ -103,7 +103,7 @@ impl SingleInstanceGuard {
                     if let Some(pid) = read_lock_pid(&path) {
                         if pid_alive(pid) {
                             bail!(
-                                "pw-duck läuft bereits als Prozess {pid}; starte keine zweite Tray-Instanz"
+                                "pw-duck is already running as process {pid}; not starting a second tray instance"
                             );
                         }
                     }
@@ -244,7 +244,7 @@ impl PwDuckTray {
             settings,
             state: TrayRunState::Idle,
             source_label: configured_source_label(),
-            message: "Bereit".to_string(),
+            message: "Ready".to_string(),
             quitting: false,
         }
     }
@@ -257,14 +257,14 @@ impl PwDuckTray {
         match self.state {
             TrayRunState::Idle | TrayRunState::Error => {
                 self.state = TrayRunState::Starting;
-                self.message = "Starte Ducking …".to_string();
+                self.message = "Starting ducking …".to_string();
             }
             TrayRunState::Waiting
             | TrayRunState::Starting
             | TrayRunState::Neutral
             | TrayRunState::Ducked => {
                 self.state = TrayRunState::Stopping;
-                self.message = "Stoppe Ducking …".to_string();
+                self.message = "Stopping ducking …".to_string();
             }
             TrayRunState::Stopping => {}
         }
@@ -289,7 +289,7 @@ impl PwDuckTray {
                         StandardItem {
                             label,
                             activate: Box::new(move |this: &mut Self| {
-                                this.message = format!("Quelle #{index} wird gespeichert …");
+                                this.message = format!("Saving source #{index} …");
                                 let _ = tx.send(TrayCommand::SelectSource(index));
                             }),
                             ..Default::default()
@@ -300,7 +300,7 @@ impl PwDuckTray {
             }
             Err(err) => items.push(
                 StandardItem {
-                    label: format!("Quellen nicht lesbar: {err}"),
+                    label: format!("Cannot read sources: {err}"),
                     enabled: false,
                     ..Default::default()
                 }
@@ -311,7 +311,7 @@ impl PwDuckTray {
         if items.is_empty() {
             items.push(
                 StandardItem {
-                    label: "Keine Playback-Streams sichtbar".into(),
+                    label: "No playback streams visible".into(),
                     enabled: false,
                     ..Default::default()
                 }
@@ -325,7 +325,7 @@ impl PwDuckTray {
     fn controls_summary(&self) -> String {
         let settings = read_settings(&self.settings);
         format!(
-            "Regler: Duck {}%, Sens {:.4}, Hold {}ms",
+            "Tuning: Duck {}%, Sens {:.4}, Hold {}ms",
             settings.duck_percent, settings.vad_threshold, settings.hold_ms
         )
     }
@@ -409,10 +409,10 @@ impl ksni::Tray for PwDuckTray {
             icon_pixmap: icons::tray_icon_pixmap(),
             title: self.title(),
             description: format!(
-                "{}\nDetails: {}\nQuelle: {}",
+                "{}\nDetails: {}\nSource: {}",
                 self.visible_state_label(),
                 self.message,
-                self.source_label.as_deref().unwrap_or("nicht gewählt")
+                self.source_label.as_deref().unwrap_or("not selected")
             ),
             ..Default::default()
         }
@@ -450,8 +450,8 @@ impl ksni::Tray for PwDuckTray {
             .into(),
             StandardItem {
                 label: format!(
-                    "Quelle: {}",
-                    self.source_label.as_deref().unwrap_or("nicht gewählt")
+                    "Source: {}",
+                    self.source_label.as_deref().unwrap_or("not selected")
                 ),
                 enabled: false,
                 ..Default::default()
@@ -465,7 +465,7 @@ impl ksni::Tray for PwDuckTray {
             .into(),
             ksni::MenuItem::Separator,
             StandardItem {
-                label: "Steuerung:".into(),
+                label: "Controls:".into(),
                 enabled: false,
                 ..Default::default()
             }
@@ -484,25 +484,25 @@ impl ksni::Tray for PwDuckTray {
                 label: tuner_menu_label().into(),
                 enabled: tuner_menu_enabled(),
                 activate: Box::new(move |this: &mut Self| {
-                    this.message = "Öffne Regler …".into();
+                    this.message = "Opening tuner …".into();
                     let _ = this.command_tx.send(TrayCommand::OpenTuner);
                 }),
                 ..Default::default()
             }
             .into(),
             SubMenu {
-                label: "Quelle: wählen".into(),
+                label: "Source: choose".into(),
                 submenu: self.source_menu(),
                 ..Default::default()
             }
             .into(),
             ksni::MenuItem::Separator,
             StandardItem {
-                label: "Beenden".into(),
+                label: "Quit".into(),
                 disposition: Disposition::Alert,
                 activate: Box::new(move |this: &mut Self| {
                     this.state = TrayRunState::Stopping;
-                    this.message = "Beende …".into();
+                    this.message = "Quitting …".into();
                     let _ = tx_quit.send(TrayCommand::Quit);
                 }),
                 ..Default::default()
@@ -514,9 +514,9 @@ impl ksni::Tray for PwDuckTray {
 
 fn tuner_menu_label() -> &'static str {
     if cfg!(feature = "gui") {
-        "Regler: öffnen"
+        "Tuner: open"
     } else {
-        "Regler: nur mit GUI-Build"
+        "Tuner: GUI build only"
     }
 }
 
@@ -557,14 +557,14 @@ fn open_tuner(handle: &Handle<PwDuckTray>) {
     let result = spawn_tuner();
     handle.update(|tray: &mut PwDuckTray| match result {
         Ok(()) => {
-            tray.message = "Regler geöffnet".into();
+            tray.message = "Tuner opened".into();
             if tray.state == TrayRunState::Error {
                 tray.state = TrayRunState::Idle;
             }
         }
         Err(err) => {
             tray.state = TrayRunState::Error;
-            tray.message = format!("Regler konnten nicht geöffnet werden: {err:#}");
+            tray.message = format!("Could not open tuner: {err:#}");
         }
     });
 }
@@ -572,11 +572,11 @@ fn open_tuner(handle: &Handle<PwDuckTray>) {
 fn spawn_tuner() -> Result<()> {
     #[cfg(feature = "gui")]
     {
-        let exe = std::env::current_exe().context("aktuellen Programm-Pfad ermitteln")?;
+        let exe = std::env::current_exe().context("get current executable path")?;
         let mut child = std::process::Command::new(exe)
             .arg("tune-gui")
             .spawn()
-            .context("Regler-GUI starten")?;
+            .context("start tuner GUI")?;
         thread::spawn(move || {
             let _ = child.wait();
         });
@@ -585,7 +585,7 @@ fn spawn_tuner() -> Result<()> {
 
     #[cfg(not(feature = "gui"))]
     {
-        bail!("Regler-GUI ist in diesem Build nicht enthalten; nutze `pw-duck tune` im Terminal oder baue mit `--features gui`")
+        bail!("the tuner GUI is not included in this build; use `pw-duck tune` in a terminal or build with `--features gui`")
     }
 }
 
@@ -647,7 +647,7 @@ pub fn run(options: TrayOptions) -> Result<()> {
     if let Some(worker) = worker.take() {
         handle.update(|tray: &mut PwDuckTray| {
             tray.state = TrayRunState::Stopping;
-            tray.message = "Stoppe Ducking …".into();
+            tray.message = "Stopping ducking …".into();
         });
         worker.stop();
     }
@@ -694,7 +694,7 @@ fn prepare_tray_shutdown(handle: &Handle<PwDuckTray>) {
     handle.update(|tray: &mut PwDuckTray| {
         tray.quitting = true;
         tray.state = TrayRunState::Idle;
-        tray.message = "Beendet".into();
+        tray.message = "Quit".into();
     });
     std::thread::sleep(Duration::from_millis(150));
 }
@@ -707,7 +707,7 @@ fn start_worker(
 ) {
     handle.update(|tray: &mut PwDuckTray| {
         tray.state = TrayRunState::Starting;
-        tray.message = "Starte Ducking …".into();
+        tray.message = "Starting ducking …".into();
     });
     *worker = Some(DuckingWorker::spawn(settings, worker_tx));
 }
@@ -716,13 +716,13 @@ fn stop_worker(handle: &Handle<PwDuckTray>, worker: &mut Option<DuckingWorker>) 
     if let Some(worker) = worker.take() {
         handle.update(|tray: &mut PwDuckTray| {
             tray.state = TrayRunState::Stopping;
-            tray.message = "Stoppe Ducking …".into();
+            tray.message = "Stopping ducking …".into();
         });
         worker.request_stop();
         worker.stop();
         handle.update(|tray: &mut PwDuckTray| {
             tray.state = TrayRunState::Idle;
-            tray.message = "Aus".into();
+            tray.message = "Off".into();
         });
     }
 }
@@ -737,7 +737,7 @@ fn drain_worker_events(
             WorkerEvent::WaitingForSource => {
                 handle.update(|tray: &mut PwDuckTray| {
                     tray.state = TrayRunState::Waiting;
-                    tray.message = "Warte auf konfigurierte Voice-Quelle".into();
+                    tray.message = "Waiting for configured voice source".into();
                 });
             }
             WorkerEvent::Started {
@@ -749,20 +749,20 @@ fn drain_worker_events(
                 handle.update(|tray: &mut PwDuckTray| {
                     tray.state = TrayRunState::Neutral;
                     tray.message = format!(
-                        "Bereit: {label}, threshold={threshold:.4}, start={start_threshold:.4}, hold={hold_ms}ms"
+                        "Ready: {label}, threshold={threshold:.4}, start={start_threshold:.4}, hold={hold_ms}ms"
                     );
                 });
             }
             WorkerEvent::VoiceActive { level, percent } => {
                 handle.update(|tray: &mut PwDuckTray| {
                     tray.state = TrayRunState::Ducked;
-                    tray.message = format!("Voice aktiv: level={level:.4}, Ducking {percent}%");
+                    tray.message = format!("Voice active: level={level:.4}, ducking {percent}%");
                 });
             }
             WorkerEvent::VoiceInactive { level } => {
                 handle.update(|tray: &mut PwDuckTray| {
                     tray.state = TrayRunState::Neutral;
-                    tray.message = format!("Voice inaktiv: level={level:.4}");
+                    tray.message = format!("Voice inactive: level={level:.4}");
                 });
             }
             WorkerEvent::Stopped => {
@@ -771,7 +771,7 @@ fn drain_worker_events(
                 }
                 handle.update(|tray: &mut PwDuckTray| {
                     tray.state = TrayRunState::Idle;
-                    tray.message = "Aus".into();
+                    tray.message = "Off".into();
                 });
             }
             WorkerEvent::Error(err) => {
@@ -810,14 +810,14 @@ fn select_source(index: u32, handle: &Handle<PwDuckTray>) {
     handle.update(|tray: &mut PwDuckTray| match result {
         Ok(label) => {
             tray.source_label = Some(label.clone());
-            tray.message = format!("Quelle gespeichert: {label}");
+            tray.message = format!("Source saved: {label}");
             if tray.state == TrayRunState::Error {
                 tray.state = TrayRunState::Idle;
             }
         }
         Err(err) => {
             tray.state = TrayRunState::Error;
-            tray.message = format!("Quelle konnte nicht gespeichert werden: {err:#}");
+            tray.message = format!("Could not save source: {err:#}");
         }
     });
 }

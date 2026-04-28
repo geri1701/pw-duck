@@ -12,7 +12,7 @@ const THRESHOLD_MIN: f32 = 0.0025;
 const THRESHOLD_MAX: f32 = 0.2;
 
 pub fn run() -> Result<()> {
-    gtk::init().context("GTK initialisieren")?;
+    gtk::init().context("initialize GTK")?;
     install_icon_theme_path();
     gtk::Window::set_default_icon_name(icons::APP_ICON_NAME);
     let app = Application::builder().application_id(APP_ID).build();
@@ -36,7 +36,7 @@ fn build_ui(app: &Application) {
 
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("pw-duck Regler")
+        .title("pw-duck Tuner")
         .icon_name(icons::APP_ICON_NAME)
         .default_width(460)
         .default_height(280)
@@ -49,7 +49,7 @@ fn build_ui(app: &Application) {
     root.set_margin_start(18);
     root.set_margin_end(18);
 
-    let title = Label::new(Some("pw-duck Regler"));
+    let title = Label::new(Some("pw-duck Tuner"));
     title.set_xalign(0.0);
     title.add_css_class("title-2");
     root.append(&title);
@@ -69,8 +69,8 @@ fn build_ui(app: &Application) {
     sensitivity.set_hexpand(true);
     let sensitivity_value = Label::new(None);
     root.append(&slider_row(
-        "Empfindlichkeit",
-        "0% = aus, 100% = sehr empfindlich",
+        "Sensitivity",
+        "0% = off, 100% = very sensitive",
         &sensitivity,
         &sensitivity_value,
     ));
@@ -90,8 +90,8 @@ fn build_ui(app: &Application) {
     duck_percent.set_hexpand(true);
     let duck_value = Label::new(None);
     root.append(&slider_row(
-        "Ducking-Lautstärke",
-        "Ziel-Lautstärke während Sprache",
+        "Ducking volume",
+        "Target volume while voice is active",
         &duck_percent,
         &duck_value,
     ));
@@ -112,13 +112,13 @@ fn build_ui(app: &Application) {
     let hold_value = Label::new(None);
     root.append(&slider_row(
         "Hold",
-        "Wie lange Ducking nach Sprache aktiv bleibt",
+        "How long ducking stays active after voice stops",
         &hold,
         &hold_value,
     ));
 
     let hint = Label::new(Some(
-        "Änderungen werden sofort gespeichert und wirken im laufenden Tray.",
+        "Changes are saved immediately and apply to the running tray.",
     ));
     hint.set_xalign(0.0);
     hint.add_css_class("dim-label");
@@ -137,7 +137,7 @@ fn build_ui(app: &Application) {
             duck_value.set_text(&format!("{}%", settings.duck_percent));
             hold_value.set_text(&format!("{} ms", settings.hold_ms));
             if let Err(err) = save_settings(settings) {
-                eprintln!("Regler konnten nicht gespeichert werden: {err:#}");
+                eprintln!("Could not save tuner settings: {err:#}");
             }
         }
     };
@@ -223,10 +223,10 @@ fn settings_from_widgets(
 fn sensitivity_label(threshold: f32) -> String {
     let percent = sensitivity_percent(threshold);
     if vad::is_disabled_threshold(threshold) {
-        format!("{percent}% · AUS")
+        format!("{percent}% · OFF")
     } else {
         format!(
-            "{percent}% · Schwelle {:.4} · Start {:.4}",
+            "{percent}% · threshold {:.4} · start {:.4}",
             threshold,
             vad::start_threshold(threshold)
         )

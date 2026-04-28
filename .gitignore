@@ -1,5 +1,20 @@
+# Rust / Cargo
 /target/
+
+# Nix / direnv
 /.direnv/
 /result
 /result-*
+
+# Arch / AUR / makepkg artifacts
+/pkg/
+/src/pw-duck-*/
+/pw-duck-*.tar.gz
+/pw-duck-*.tar.gz.sig
+/*.pkg.tar.*
+
+# Local logs
 *.log
+
+# Local planning notes
+/PLAN.md

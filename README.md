@@ -1,150 +1,145 @@
 # pw-duck
 
-`pw-duck` ist eine kleine Linux-Tray-App, die nicht-Voice-Audio automatisch leiser macht, sobald eine konfigurierte Remote-Voice-Quelle aktiv ist.
+`pw-duck` is a small Linux tray application that lowers non-voice audio while a configured remote voice stream is active.
 
-Der wichtigste Punkt: Die Erkennung läuft auf dem **eingehenden Voice-Stream** der gewählten Anwendung, nicht auf dem lokalen Mikrofon.
+The important detail: detection runs on the **incoming remote voice playback stream** of the selected application, not on the local microphone.
 
-## Funktionsprinzip
+## How it works
 
-- Eine Voice-Quelle wird einmal ausgewählt, z. B. Discord/WebRTC.
-- Nicht-Voice-Playback-Streams werden während aktivem Ducking über einen virtuellen PipeWire-Sammel-Sink geroutet.
-- Die App misst den Pegel der konfigurierten Remote-Voice-Quelle.
-- Sobald dort Sprache erkannt wird, wird der Sammelpfad auf die konfigurierte Ducking-Lautstärke reduziert.
-- Beim Stoppen wird best-effort sauber zurückgeroutet. Wenn ein Stream nicht sicher zurückbewegt werden kann, bleibt der virtuelle Sink absichtlich erhalten, damit laufende Apps wie Browser oder Spiele nicht beendet werden.
+- Select a voice source once, for example a Discord/WebRTC playback stream.
+- While ducking is enabled, non-voice playback streams are routed through a virtual PipeWire collector sink.
+- `pw-duck` measures the level of the configured remote voice source.
+- When remote speech is detected, the collector path is reduced to the configured ducking volume.
+- On stop, streams are restored best-effort. If a stream cannot safely be moved back, the virtual sink is intentionally left alive instead of destroying active browser/game audio.
 
-## Voraussetzungen
+## Requirements
 
-Zur Laufzeit wird ein moderner Linux-Audio-Desktop erwartet:
+Runtime expectations:
 
-- PipeWire mit WirePlumber oder kompatiblem Session-Manager
-- PulseAudio-Kompatibilität (`pactl` muss gegen PipeWire/Pulse funktionieren)
-- `pw-link` aus PipeWire
-- ein StatusNotifierItem-/SNI-Tray-Host
-- GTK4 nur für das optionale grafische Regler-Fenster
+- PipeWire with WirePlumber or a compatible session manager
+- PulseAudio compatibility (`pactl` must work against PipeWire/Pulse)
+- `pw-link` from PipeWire
+- a StatusNotifierItem/SNI tray host
+- GTK4 for the optional graphical tuner window
 
-Mit dem Nix-Paket werden die direkt benötigten Programmabhängigkeiten und Wrapper-Pfade mitgeliefert. PipeWire/WirePlumber und der Tray-Host bleiben Desktop-/Systemdienste des Zielsystems. Der normale Rust-Default-Build enthält die GTK-GUI bewusst nicht; sie wird über das Cargo-Feature `gui` aktiviert.
+The Nix package provides direct program dependencies and wrapper paths. PipeWire/WirePlumber and the tray host remain system/desktop services. The default Rust build intentionally excludes GTK; the GUI is enabled with the Cargo feature `gui`.
 
-### Desktop-Unterstützung
+### Desktop support
 
-- **KDE Plasma:** primäres Ziel, SNI wird nativ unterstützt.
-- **GNOME:** benötigt eine AppIndicator-/KStatusNotifierItem-Erweiterung, z. B. „AppIndicator and KStatusNotifierItem Support“.
-- Andere SNI-Hosts können funktionieren, unterscheiden sich aber teils bei Klick- und Menüverhalten.
+- **KDE Plasma:** primary target; SNI is supported natively.
+- **GNOME:** requires an AppIndicator/KStatusNotifierItem extension, for example “AppIndicator and KStatusNotifierItem Support”.
+- Other SNI hosts may work, but click and menu behavior can differ.
 
-## Starten mit Nix
+## Run with Nix
 
-Aus dem Projektverzeichnis:
-
-```bash
-nix run .#tray
-```
-
-Regler-GUI direkt öffnen:
-
-```bash
-nix run .#tune-gui
-```
-
-Terminal-Tuner als Fallback/Debug-Weg:
-
-```bash
-nix run .#tune
-```
-
-Ohne Subcommand startet `pw-duck` die Tray-App. Allgemeine CLI-Kommandos werden explizit aufgerufen:
+From the project directory:
 
 ```bash
 nix run .#
+```
+
+This starts the tray app. Explicit app outputs are also available:
+
+```bash
+nix run .#tray
+nix run .#tune-gui
+nix run .#tune
+```
+
+CLI commands:
+
+```bash
 nix run .# -- status
 nix run .# -- sources
 nix run .# -- select-source <sink-input-index>
 nix run .# -- config-path
 ```
 
-## Erstbenutzung
+## First use
 
-1. Voice-Anwendung starten und einem Voice-/Call-Kanal beitreten, damit ihr Playback-Stream sichtbar ist.
-2. Tray starten:
+1. Start the voice application and join a call/channel so its playback stream is visible.
+2. Start the tray:
 
    ```bash
-   nix run .#tray
+   nix run .#
    ```
 
-3. Im Tray-Menü unter `Steuerung:` → `Quelle: wählen` den passenden Voice-Stream auswählen.
-4. `Ducking` einschalten.
-5. Bei Bedarf `Regler: öffnen` verwenden.
+3. In the tray menu, choose `Controls:` → `Source: choose` and select the voice stream.
+4. Enable `Ducking`.
+5. Use `Tuner: open` if needed.
 
-Alternativ per CLI:
+Alternatively via CLI:
 
 ```bash
 nix run .# -- sources
 nix run .# -- select-source <sink-input-index>
-nix run .#tray
+nix run .#
 ```
 
-Achtung: Wenn eine Quelle als `#546` angezeigt wird, im Shell-Befehl nur die Zahl verwenden:
+If a source is shown as `#546`, pass only the number in the shell command:
 
 ```bash
 nix run .# -- select-source 546
 ```
 
-## Tray-Menü
+## Tray menu
 
-Das Menü trennt Anzeige und Steuerung bewusst:
+The menu intentionally separates information from controls:
 
 ```text
 Info:
   Ducking: ON/OFF
   Details: ...
-  Quelle: ...
-  Regler: ...
+  Source: ...
+  Tuning: ...
 
-Steuerung:
-  Ducking          # reiner Schalter
-  Regler: öffnen  # im Nicht-GUI-Build deaktiviert
-  Quelle: wählen
+Controls:
+  Ducking          # pure switch
+  Tuner: open      # disabled in non-GUI builds
+  Source: choose
 
-Beenden
+Quit
 ```
 
-Der sichtbare Hauptzustand ist absichtlich binär:
+The main visible tray state is intentionally binary:
 
 - `Ducking OFF`
 - `Ducking ON`
 
-Interne Zustände wie Warten, Starten, Neutral, Geduckt oder Fehler stehen nur in den Details.
+Internal states such as waiting, starting, neutral, ducked, or error are shown only in details.
 
-## Regler
+## Tuner
 
-Das GTK-Fenster `tune-gui` bietet drei Werte:
+The GTK window `tune-gui` exposes three values:
 
-- **Empfindlichkeit**: 0 % deaktiviert VAD vollständig; 100 % ist sehr empfindlich.
-- **Ducking-Lautstärke**: Ziel-Lautstärke für Nicht-Voice-Audio während Remote-Sprache aktiv ist, in 1-%-Schritten.
-- **Hold**: Nachlaufzeit in Millisekunden, bevor Ducking nach Sprachende gelöst wird.
+- **Sensitivity:** 0% disables VAD completely; 100% is very sensitive.
+- **Ducking volume:** target volume for non-voice audio while remote speech is active, in 1% steps.
+- **Hold:** time in milliseconds before ducking is released after speech ends.
 
-Die Werte werden sofort in der Konfiguration gespeichert und von einem laufenden Tray-Prozess live übernommen. In Builds ohne Cargo-Feature `gui` bleibt `pw-duck tune` als Terminal-Regler verfügbar; der Tray-Menüpunkt für die GUI ist dort deaktiviert.
+Values are saved immediately and are picked up live by a running tray process. In builds without the Cargo feature `gui`, `pw-duck tune` remains available as a terminal tuner; the tray menu item for the GUI is disabled.
 
-## Konfiguration
+## Configuration
 
-Die Konfiguration liegt unter:
+The configuration file is:
 
 ```text
 ~/.config/pw-duck/config.toml
 ```
 
-Gespeichert werden:
+Persisted values:
 
 - `duck_percent`
 - `vad_threshold`
 - `hold_ms`
-- die stabile Identität der gewählten Voice-Quelle
+- the stable identity of the selected voice source
 
-Nicht persistent gespeichert werden Laufzeitdetails wie `Ducking ON/OFF`, virtuelle Sink-Namen, aktuell geroutete Streams oder VAD-Zustand.
+Runtime state is not persisted: `Ducking ON/OFF`, virtual sink names, currently routed streams, and VAD state live only in the running process.
 
-## Entwicklung
+## Development
 
-Dieses Projekt braucht native PipeWire-/pkg-config-Bibliotheken. Die GTK-GUI ist optional und hängt am Cargo-Feature `gui`.
+This project needs native PipeWire/pkg-config libraries. The GTK GUI is optional and controlled by the Cargo feature `gui`.
 
-Nicht-GUI-Pfade bauen ohne GTK:
+Non-GUI paths build without GTK:
 
 ```bash
 direnv exec . cargo check
@@ -153,35 +148,28 @@ direnv exec . cargo run -- status
 direnv exec . cargo run -- sources
 ```
 
-GUI-/Tray-Entwicklung mit grafischem Regler:
+GUI/tray development:
 
 ```bash
 direnv exec . cargo run --features gui
-direnv exec . cargo run --features gui -- tray
 direnv exec . cargo run --features gui -- tune-gui
 direnv exec . cargo check --features gui
 ```
 
-Oder interaktiv:
+Or interactively:
 
 ```bash
 nix develop
 cargo run --features gui
 ```
 
-Nicht verwenden:
-
-```bash
-cargo run -- tray
-```
-
-wenn die Shell dabei meldet:
+Do not rely on plain `cargo` outside the dev shell if the shell says:
 
 ```text
 Command 'cargo' not found; attempting execution with nix run...
 ```
 
-Dann wird nur `cargo` ad hoc geholt, aber nicht die benötigte PipeWire-/pkg-config-Entwicklungsumgebung. Typische Folge sind fehlende `.pc`-Dateien wie `pipewire-0.3.pc`; beim GUI-Feature zusätzlich `glib-2.0.pc`, `gtk4.pc`, `cairo.pc` usw.
+That fetches only Cargo ad hoc, not the required PipeWire/pkg-config development environment. Typical failures are missing `.pc` files such as `pipewire-0.3.pc`; with the GUI feature also `glib-2.0.pc`, `gtk4.pc`, `cairo.pc`, and related files.
 
 ## Packaging
 
@@ -191,7 +179,7 @@ Build:
 nix build .#
 ```
 
-Das Paket installiert:
+The package installs:
 
 ```text
 bin/pw-duck
@@ -202,59 +190,60 @@ share/doc/pw-duck/README.md
 share/doc/pw-duck/LICENSE
 ```
 
-Flake-App-Outputs:
+Flake app outputs:
 
 ```text
-.#          pw-duck, startet ohne Subcommand die Tray-App
+.#          pw-duck tray app
 .#tray      pw-duck tray
 .#tune-gui  pw-duck tune-gui
 .#tune      pw-duck tune
 ```
 
-Das Nix-Paket baut mit aktiviertem `gui`-Feature, installiert also auch das grafische Regler-Fenster. Der Nix-Wrapper setzt den `PATH` so, dass `pactl` und `pw-link` aus den Paketabhängigkeiten gefunden werden.
+The Nix package builds with the `gui` feature enabled, so the graphical tuner is included. The wrapper adds `pactl` and `pw-link` to `PATH`.
 
-### AUR
+## AUR
 
-Das normale AUR-Paket `pw-duck` soll ebenfalls als vollständiger Desktop-Build ausgeliefert werden. Das mitgelieferte `PKGBUILD` baut deshalb explizit mit:
+The normal AUR package `pw-duck` is a full desktop build and uses:
 
 ```bash
 cargo build --release --locked --features gui
+cargo test --release --locked --features gui
 ```
 
-Damit ist GTK4 im AUR-Paket eine harte Abhängigkeit und `Regler: öffnen` funktioniert standardmäßig. Der Nicht-GUI-Build bleibt nur für Entwicklung, Tests oder bewusst headless genutzte Builds gedacht.
+GTK4 is therefore a hard dependency for the AUR package, and `Tuner: open` works by default. The non-GUI build remains useful for development, tests, and intentional headless builds.
 
-Vor dem Upload ins AUR muss nach dem finalen GitHub-Tag die `sha256sums` in `PKGBUILD`/`.SRCINFO` durch die echte Release-Tarball-Prüfsumme ersetzt werden:
+Before uploading to AUR, replace `sha256sums=('SKIP')` in `PKGBUILD` and `.SRCINFO` with the real checksum of the GitHub release tarball after the final tag exists:
 
 ```bash
 ./scripts/update-aur-checksum.sh
 ```
 
-Der Befehl lädt `https://github.com/geri1701/pw-duck/archive/refs/tags/v${pkgver}.tar.gz`, trägt die SHA-256-Prüfsumme in `PKGBUILD` und `.SRCINFO` ein und bricht bewusst ab, solange der Tag noch nicht veröffentlicht ist.
+The script downloads `https://github.com/geri1701/pw-duck/archive/refs/tags/v${pkgver}.tar.gz`, writes the SHA-256 checksum to `PKGBUILD` and `.SRCINFO`, and exits deliberately while the tag is not yet published.
 
 ## Troubleshooting
 
-### Kein Tray-Icon sichtbar
+### No tray icon visible
 
-- Unter KDE Plasma sollte SNI nativ funktionieren.
-- Unter GNOME muss eine AppIndicator-/KStatusNotifierItem-Erweiterung aktiv sein.
-- Falls ein Tray-Host alte Icons cached, die laufende alte Tray-Instanz wirklich beenden und neu starten.
+- KDE Plasma should support SNI natively.
+- GNOME requires an active AppIndicator/KStatusNotifierItem extension.
+- If a tray host caches old icons, fully stop the old tray process and start it again.
 
-### Keine passende Quelle sichtbar
+### No suitable source visible
 
-- Die Voice-App muss gerade einen Playback-Stream erzeugen, also typischerweise in einem Call/Voice-Kanal sein.
-- `sources` zeigt Playback-Streams; es werden keine Mikrofonquellen ausgewählt.
+- The voice app must currently produce a playback stream, usually by being in a call/channel.
+- `sources` lists playback streams; microphone sources are not selected.
 
-### Ducking reagiert nicht
+### Ducking does not react
 
-- Prüfen, ob die richtige Voice-Quelle gewählt wurde.
-- Empfindlichkeit im Regler erhöhen.
-- Beachten: 0 % Empfindlichkeit bedeutet VAD aus.
-- Prüfen, ob PipeWire/PulseAudio-Kompatibilität läuft und `pactl` Streams sieht:
+- Check that the correct voice source is selected.
+- Increase sensitivity in the tuner.
+- Remember: 0% sensitivity means VAD is off.
+- Check that PipeWire/PulseAudio compatibility is running and `pactl` can see streams:
 
   ```bash
   nix run .# -- status
   ```
 
-### App-Streams verschwinden beim Stoppen nicht
+### App streams do not disappear after stopping
 
-Das ist Absicht im Fehlerfall: Wenn Streams nicht sicher vom virtuellen Sink zurückbewegt werden können, wird der virtuelle Sink nicht zerstört. Das verhindert, dass laufende Anwendungen durch einen harten Sink-Destroy beendet werden.
+That can be intentional in a failure path: if streams cannot safely be moved away from the virtual sink, the virtual sink is not destroyed. This avoids killing active applications by destroying the sink underneath them.

@@ -53,7 +53,7 @@ pub enum Command {
         #[arg(long)]
         yes_really_route: bool,
     },
-    /// Debug/PoC path: route streams through a temporary virtual sink for N seconds.
+    /// Diagnostic path: route streams through a temporary virtual sink for N seconds.
     RouteOnce {
         /// How long to keep the temporary route alive.
         #[arg(long, default_value_t = 5)]

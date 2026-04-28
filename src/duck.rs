@@ -293,7 +293,7 @@ fn fallback_settings() -> DuckingSettings {
 pub fn configured_voice_source() -> Result<ConfiguredSource> {
     let config = Config::load_or_default()?;
     config.voice_source.ok_or_else(|| {
-        anyhow::anyhow!("keine Voice-Quelle konfiguriert; erst config.toml anlegen/Quelle wählen")
+        anyhow::anyhow!("no voice source configured; create config.toml and choose a source first")
     })
 }
 
@@ -325,7 +325,7 @@ fn voice_capture_target<R: CommandRunner>(
         .sink_inputs()?
         .into_iter()
         .find(|input| input.identity().matches_configured_source(voice_source))
-        .ok_or_else(|| anyhow::anyhow!("konfigurierte Voice-Quelle ist gerade nicht sichtbar"))?;
+        .ok_or_else(|| anyhow::anyhow!("configured voice source is not visible right now"))?;
     let identity = input.identity();
     let object_serial = input.properties.get("object.serial").cloned();
     let node_name = identity.node_name.clone();
@@ -354,6 +354,6 @@ pub fn ensure_route_acknowledged(command: &str, yes_really_route: bool) -> Resul
     if yes_really_route {
         Ok(())
     } else {
-        bail!("{command} verändert den laufenden PipeWire-Graphen; nutze --yes-really-route")
+        bail!("{command} changes the live PipeWire graph; use --yes-really-route")
     }
 }
