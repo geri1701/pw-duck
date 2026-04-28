@@ -26,7 +26,7 @@ fi
 sum=$(sha256sum "$tmp" | awk '{print $1}')
 
 awk -v sum="$sum" '
-  /^sha256sums=\047/ {
+  /^sha256sums=\(/ {
     print "sha256sums=(\047" sum "\047)"
     count++
     next
