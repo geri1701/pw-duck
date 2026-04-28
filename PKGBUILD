@@ -26,7 +26,7 @@ optdepends=(
 conflicts=('pw-duck-git')
 options=('!lto')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('6ce941e5f690d3e7601bc2fea9ce5ac33094c58111e1732b84f21c327fabf2dc')
 
 prepare() {
   cd "$pkgname-$pkgver"
