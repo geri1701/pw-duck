@@ -7,6 +7,8 @@ use std::time::{Duration, Instant};
 use crate::identity::AudioIdentity;
 use crate::shell::CommandRunner;
 
+const PACTL_COMMAND_TIMEOUT: Duration = Duration::from_secs(5);
+
 pub struct PulseCtl<'a, R: CommandRunner> {
     runner: &'a R,
 }
@@ -19,20 +21,25 @@ impl<'a, R: CommandRunner> PulseCtl<'a, R> {
     pub fn default_sink_name(&self) -> Result<String> {
         Ok(self
             .runner
-            .output("pactl", &["get-default-sink"])?
+            .output_with_timeout("pactl", &["get-default-sink"], PACTL_COMMAND_TIMEOUT)?
             .trim()
             .to_string())
     }
 
     pub fn set_default_sink(&self, sink_name: &str) -> Result<()> {
-        self.runner
-            .status("pactl", &["set-default-sink", sink_name])
+        self.runner.status_with_timeout(
+            "pactl",
+            &["set-default-sink", sink_name],
+            PACTL_COMMAND_TIMEOUT,
+        )
     }
 
     pub fn sinks(&self) -> Result<Vec<Sink>> {
-        let raw = self
-            .runner
-            .output("pactl", &["--format=json", "list", "sinks"])?;
+        let raw = self.runner.output_with_timeout(
+            "pactl",
+            &["--format=json", "list", "sinks"],
+            PACTL_COMMAND_TIMEOUT,
+        )?;
         serde_json::from_str(&raw).context("failed to parse pactl sinks JSON")
     }
 
@@ -58,9 +65,11 @@ impl<'a, R: CommandRunner> PulseCtl<'a, R> {
     }
 
     pub fn sink_inputs(&self) -> Result<Vec<SinkInput>> {
-        let raw = self
-            .runner
-            .output("pactl", &["--format=json", "list", "sink-inputs"])?;
+        let raw = self.runner.output_with_timeout(
+            "pactl",
+            &["--format=json", "list", "sink-inputs"],
+            PACTL_COMMAND_TIMEOUT,
+        )?;
         if raw.trim().is_empty() {
             return Ok(Vec::new());
         }
@@ -76,28 +85,31 @@ impl<'a, R: CommandRunner> PulseCtl<'a, R> {
     }
 
     pub fn move_sink_input(&self, input_index: u32, sink_name: &str) -> Result<()> {
-        self.runner.status(
+        self.runner.status_with_timeout(
             "pactl",
             &["move-sink-input", &input_index.to_string(), sink_name],
+            PACTL_COMMAND_TIMEOUT,
         )
     }
 
     pub fn move_sink_input_to_sink_index(&self, input_index: u32, sink_index: u32) -> Result<()> {
-        self.runner.status(
+        self.runner.status_with_timeout(
             "pactl",
             &[
                 "move-sink-input",
                 &input_index.to_string(),
                 &sink_index.to_string(),
             ],
+            PACTL_COMMAND_TIMEOUT,
         )
     }
 
     pub fn set_source_volume_percent(&self, source_name: &str, percent: u8) -> Result<()> {
         let clamped = percent.min(150);
-        self.runner.status(
+        self.runner.status_with_timeout(
             "pactl",
             &["set-source-volume", source_name, &format!("{clamped}%")],
+            PACTL_COMMAND_TIMEOUT,
         )
     }
 }

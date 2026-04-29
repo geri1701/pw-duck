@@ -29,7 +29,7 @@
       {
         packages.default = pkgs.rustPlatform.buildRustPackage {
           pname = "pw-duck";
-          version = "0.2.1";
+          version = "0.2.2";
           src = source;
 
           cargoLock.lockFile = ./Cargo.lock;
@@ -51,7 +51,7 @@
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
           preFixup = ''
-            gappsWrapperArgs+=(--prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.pipewire pkgs.pulseaudio ]})
+            gappsWrapperArgs+=(--prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.coreutils pkgs.pipewire pkgs.pulseaudio ]})
           '';
 
           postInstall = ''

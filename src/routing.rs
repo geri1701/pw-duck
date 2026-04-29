@@ -7,6 +7,8 @@ use crate::pipewire_sink::VirtualSink;
 use crate::pulse::{PulseCtl, SinkInput};
 use crate::shell::CommandRunner;
 
+const PW_LINK_COMMAND_TIMEOUT: Duration = Duration::from_secs(3);
+
 #[derive(Debug, Clone)]
 pub struct RoutingOptions {
     pub virtual_sink_prefix: String,
@@ -293,7 +295,11 @@ impl<'a, R: CommandRunner> PipeWireLinks<'a, R> {
         let mut created = Vec::new();
         for link in pairs {
             self.runner
-                .status("pw-link", &["-w", &link.output, &link.input])
+                .status_with_timeout(
+                    "pw-link",
+                    &["-w", &link.output, &link.input],
+                    PW_LINK_COMMAND_TIMEOUT,
+                )
                 .with_context(|| format!("link {} -> {}", link.output, link.input))?;
             created.push(link);
         }
@@ -302,7 +308,11 @@ impl<'a, R: CommandRunner> PipeWireLinks<'a, R> {
 
     fn unlink(&self, link: &PortLink) -> Result<()> {
         self.runner
-            .status("pw-link", &["-d", &link.output, &link.input])
+            .status_with_timeout(
+                "pw-link",
+                &["-d", &link.output, &link.input],
+                PW_LINK_COMMAND_TIMEOUT,
+            )
             .with_context(|| format!("unlink {} -> {}", link.output, link.input))
     }
 }
