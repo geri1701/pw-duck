@@ -21,6 +21,6 @@ pkgbase = pw-duck
 	options = !lto
 	options = !debug
 	source = pw-duck-0.2.2.tar.gz::https://github.com/geri1701/pw-duck/archive/refs/tags/v0.2.2.tar.gz
-	sha256sums = SKIP
+	sha256sums = 18c1752ba05d572789b0d3fcbfb1b92d89edba073b70ac7f87b30a6b5a7bb2d8
 
 pkgname = pw-duck
