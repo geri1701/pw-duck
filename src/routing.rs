@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
@@ -8,6 +8,7 @@ use crate::pulse::{PulseCtl, SinkInput};
 use crate::shell::CommandRunner;
 
 const PW_LINK_COMMAND_TIMEOUT: Duration = Duration::from_secs(3);
+const PW_LINK_PORT_APPEAR_TIMEOUT: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Clone)]
 pub struct RoutingOptions {
@@ -281,23 +282,37 @@ impl<'a, R: CommandRunner> PipeWireLinks<'a, R> {
         virtual_sink: &str,
         real_sink: &str,
     ) -> Result<Vec<PortLink>> {
-        let pairs = [
-            PortLink {
-                output: format!("{virtual_sink}:monitor_FL"),
-                input: format!("{real_sink}:playback_FL"),
-            },
-            PortLink {
-                output: format!("{virtual_sink}:monitor_FR"),
-                input: format!("{real_sink}:playback_FR"),
-            },
-        ];
+        let deadline = Instant::now() + PW_LINK_PORT_APPEAR_TIMEOUT;
+        let pairs = loop {
+            let outputs = self
+                .runner
+                .output_with_timeout("pw-link", &["-o"], PW_LINK_COMMAND_TIMEOUT)
+                .context("list PipeWire output ports")?;
+            let inputs = self
+                .runner
+                .output_with_timeout("pw-link", &["-i"], PW_LINK_COMMAND_TIMEOUT)
+                .context("list PipeWire input ports")?;
+
+            match monitor_links_for_ports(&outputs, &inputs, virtual_sink, real_sink) {
+                Ok(pairs) => break pairs,
+                Err(_) if Instant::now() < deadline => {
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+                Err(err) => {
+                    bail!(
+                        "PipeWire ports for {virtual_sink} -> {real_sink} did not become available within {:?}: {err:#}",
+                        PW_LINK_PORT_APPEAR_TIMEOUT
+                    );
+                }
+            }
+        };
 
         let mut created = Vec::new();
         for link in pairs {
             self.runner
                 .status_with_timeout(
                     "pw-link",
-                    &["-w", &link.output, &link.input],
+                    &[&link.output, &link.input],
                     PW_LINK_COMMAND_TIMEOUT,
                 )
                 .with_context(|| format!("link {} -> {}", link.output, link.input))?;
@@ -314,5 +329,130 @@ impl<'a, R: CommandRunner> PipeWireLinks<'a, R> {
                 PW_LINK_COMMAND_TIMEOUT,
             )
             .with_context(|| format!("unlink {} -> {}", link.output, link.input))
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct PipeWirePort {
+    full_name: String,
+    channel: String,
+}
+
+fn monitor_links_for_ports(
+    outputs: &str,
+    inputs: &str,
+    virtual_sink: &str,
+    real_sink: &str,
+) -> Result<Vec<PortLink>> {
+    let monitor_ports = ports_for_node(outputs, virtual_sink, "monitor_");
+    let playback_ports = ports_for_node(inputs, real_sink, "playback_");
+
+    if monitor_ports.is_empty() {
+        bail!("no monitor ports found for virtual sink {virtual_sink}");
+    }
+    if playback_ports.is_empty() {
+        bail!("no playback ports found for sink {real_sink}");
+    }
+
+    let monitor_ports = choose_stereo_ports(&monitor_ports);
+    let playback_ports = choose_stereo_ports(&playback_ports);
+    let link_count = monitor_ports.len().min(playback_ports.len()).min(2);
+    if link_count == 0 {
+        bail!(
+            "could not pair monitor ports for {virtual_sink} with playback ports for {real_sink}"
+        );
+    }
+
+    Ok((0..link_count)
+        .map(|index| PortLink {
+            output: monitor_ports[index].full_name.clone(),
+            input: playback_ports[index].full_name.clone(),
+        })
+        .collect())
+}
+
+fn ports_for_node(port_list: &str, node_name: &str, port_prefix: &str) -> Vec<PipeWirePort> {
+    let node_prefix = format!("{node_name}:");
+    port_list
+        .lines()
+        .filter_map(|line| {
+            let full_name = line.trim();
+            let port_name = full_name.strip_prefix(&node_prefix)?;
+            let channel = port_name.strip_prefix(port_prefix)?;
+            Some(PipeWirePort {
+                full_name: full_name.to_string(),
+                channel: channel.to_string(),
+            })
+        })
+        .collect()
+}
+
+fn choose_stereo_ports(ports: &[PipeWirePort]) -> Vec<PipeWirePort> {
+    for pair in [["FL", "FR"], ["AUX0", "AUX1"]] {
+        if let Some(selected) = ports_for_channel_pair(ports, pair) {
+            return selected;
+        }
+    }
+
+    ports.iter().take(2).cloned().collect()
+}
+
+fn ports_for_channel_pair(ports: &[PipeWirePort], pair: [&str; 2]) -> Option<Vec<PipeWirePort>> {
+    pair.into_iter()
+        .map(|channel| ports.iter().find(|port| port.channel == channel).cloned())
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pairs_classic_stereo_ports() {
+        let links = monitor_links_for_ports(
+            "pw-duck-1:monitor_FL\npw-duck-1:monitor_FR\n",
+            "alsa_output.foo:playback_FL\nalsa_output.foo:playback_FR\n",
+            "pw-duck-1",
+            "alsa_output.foo",
+        )
+        .unwrap();
+
+        assert_eq!(links.len(), 2);
+        assert_eq!(links[0].output, "pw-duck-1:monitor_FL");
+        assert_eq!(links[0].input, "alsa_output.foo:playback_FL");
+        assert_eq!(links[1].output, "pw-duck-1:monitor_FR");
+        assert_eq!(links[1].input, "alsa_output.foo:playback_FR");
+    }
+
+    #[test]
+    fn pairs_virtual_stereo_to_pro_audio_aux_ports() {
+        let links = monitor_links_for_ports(
+            "pw-duck-1:monitor_FL\npw-duck-1:monitor_FR\n",
+            "alsa_output.corsair:playback_AUX0\nalsa_output.corsair:playback_AUX1\n",
+            "pw-duck-1",
+            "alsa_output.corsair",
+        )
+        .unwrap();
+
+        assert_eq!(links.len(), 2);
+        assert_eq!(links[0].output, "pw-duck-1:monitor_FL");
+        assert_eq!(links[0].input, "alsa_output.corsair:playback_AUX0");
+        assert_eq!(links[1].output, "pw-duck-1:monitor_FR");
+        assert_eq!(links[1].input, "alsa_output.corsair:playback_AUX1");
+    }
+
+    #[test]
+    fn falls_back_to_first_two_playback_ports() {
+        let links = monitor_links_for_ports(
+            "pw-duck-1:monitor_FL\npw-duck-1:monitor_FR\n",
+            "alsa_output.weird:playback_X\nalsa_output.weird:playback_Y\nalsa_output.weird:playback_Z\n",
+            "pw-duck-1",
+            "alsa_output.weird",
+        )
+        .unwrap();
+
+        assert_eq!(links.len(), 2);
+        assert_eq!(links[0].input, "alsa_output.weird:playback_X");
+        assert_eq!(links[1].input, "alsa_output.weird:playback_Y");
     }
 }

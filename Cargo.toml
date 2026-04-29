@@ -1,6 +1,6 @@
 [package]
 name = "pw-duck"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 description = "Linux tray app that ducks non-voice audio while a configured remote voice stream is active"
 license = "MIT"
