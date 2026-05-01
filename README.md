@@ -1,278 +1,154 @@
 # pw-duck
 
-`pw-duck` is a small Linux tray application that lowers non-voice audio while a configured remote voice stream is active.
+`pw-duck` lowers music, games, videos, and other playback while people are speaking in a selected voice-call stream.
 
-The important detail: detection runs on the **incoming remote voice playback stream** of the selected application, not on the local microphone.
+It is built for PipeWire desktops and controlled from a tray icon.
 
-## How it works
+## Features
 
-- Select a voice source once, for example a Discord/WebRTC playback stream.
-- While ducking is enabled, non-voice playback streams are routed through a virtual PipeWire collector sink.
-- `pw-duck` measures the level of the configured remote voice source.
-- When remote speech is detected, the collector path is reduced to the configured ducking volume.
-- On stop, streams are restored best-effort. If a stream cannot safely be moved back, the virtual sink is intentionally left alive instead of destroying active browser/game audio.
+- Automatic ducking for non-call audio
+- Voice-call stream selection from running playback streams
+- Tray toggle for ducking on/off
+- Sensitivity, ducking volume, and hold-time tuning
+- Terminal tuner; graphical tuner in GUI builds
 
-## Requirements
+## Install
 
-Runtime expectations:
-
-- PipeWire with WirePlumber or a compatible session manager
-- PulseAudio compatibility (`pactl` must work against PipeWire/Pulse)
-- `pw-link` from PipeWire
-- a StatusNotifierItem/SNI tray host
-- GTK4 for the optional graphical tuner window
-
-The Nix package provides direct program dependencies and wrapper paths. PipeWire/WirePlumber and the tray host remain system/desktop services. The default Rust build intentionally excludes GTK; the GUI is enabled with the Cargo feature `gui`.
-
-### Desktop support
-
-- **KDE Plasma:** primary target; SNI is supported natively.
-- **GNOME:** requires an AppIndicator/KStatusNotifierItem extension, for example “AppIndicator and KStatusNotifierItem Support”.
-- Other SNI hosts may work, but click and menu behavior can differ.
-
-## Run with Nix
-
-From the project directory:
-
-```bash
-nix run .#
-```
-
-This starts the tray app. Explicit app outputs are also available:
-
-```bash
-nix run .#tray
-nix run .#tune-gui
-nix run .#tune
-```
-
-CLI commands:
-
-```bash
-nix run .# -- status
-nix run .# -- sources
-nix run .# -- select-source <sink-input-index>
-nix run .# -- config-path
-```
-
-## First use
-
-1. Start the voice application and join a call/channel so its playback stream is visible.
-2. Start the tray:
-
-   ```bash
-   nix run .#
-   ```
-
-3. In the tray menu, choose `Controls:` → `Source: choose` and select the voice stream.
-4. Enable `Ducking`.
-5. Use `Tuner: open` if needed.
-
-Alternatively via CLI:
-
-```bash
-nix run .# -- sources
-nix run .# -- select-source <sink-input-index>
-nix run .#
-```
-
-If a source is shown as `#546`, pass only the number in the shell command:
-
-```bash
-nix run .# -- select-source 546
-```
-
-## Tray menu
-
-The menu intentionally separates information from controls:
-
-```text
-Info:
-  Ducking: ON/OFF
-  Details: ...
-  Source: ...
-  Tuning: ...
-
-Controls:
-  Ducking          # pure switch
-  Tuner: open      # disabled in non-GUI builds
-  Source: choose
-
-Quit
-```
-
-The main visible tray state is intentionally binary:
-
-- `Ducking OFF`
-- `Ducking ON`
-
-Internal states such as waiting, starting, neutral, ducked, or error are shown only in details.
-
-## Tuner
-
-The GTK window `tune-gui` exposes three values:
-
-- **Sensitivity:** 0% disables VAD completely; 100% is very sensitive.
-- **Ducking volume:** target volume for non-voice audio while remote speech is active, in 1% steps.
-- **Hold:** time in milliseconds before ducking is released after speech ends.
-
-Values are saved immediately and are picked up live by a running tray process. In builds without the Cargo feature `gui`, `pw-duck tune` remains available as a terminal tuner; the tray menu item for the GUI is disabled.
-
-## Configuration
-
-The configuration file is:
-
-```text
-~/.config/pw-duck/config.toml
-```
-
-Persisted values:
-
-- `duck_percent`
-- `vad_threshold`
-- `hold_ms`
-- the stable identity of the selected voice source
-
-Runtime state is not persisted: `Ducking ON/OFF`, virtual sink names, currently routed streams, and VAD state live only in the running process.
-
-## Development
-
-This project needs native PipeWire/pkg-config libraries. The GTK GUI is optional and controlled by the Cargo feature `gui`.
-
-Non-GUI paths build without GTK:
-
-```bash
-direnv exec . cargo check
-direnv exec . cargo test
-direnv exec . cargo run -- status
-direnv exec . cargo run -- sources
-```
-
-GUI/tray development:
-
-```bash
-direnv exec . cargo run --features gui
-direnv exec . cargo run --features gui -- tune-gui
-direnv exec . cargo check --features gui
-```
-
-Or interactively:
-
-```bash
-nix develop
-cargo run --features gui
-```
-
-Do not rely on plain `cargo` outside the dev shell if the shell says:
-
-```text
-Command 'cargo' not found; attempting execution with nix run...
-```
-
-That fetches only Cargo ad hoc, not the required PipeWire/pkg-config development environment. Typical failures are missing `.pc` files such as `pipewire-0.3.pc`; with the GUI feature also `glib-2.0.pc`, `gtk4.pc`, `cairo.pc`, and related files.
-
-## Icon assets
-
-The source images for generated app and tray icons are:
-
-```text
-assets/icons/source/pw-duck.png     # Ducking OFF / app icon
-assets/icons/source/pw-duck-on.png  # Ducking ON tray icon
-```
-
-Edit only those files. The `hicolor` PNGs, historical `pw-duck-symbolic.png` aliases, and tray pixmap `.argb` blobs are generated artifacts. Regenerate them with:
-
-```bash
-scripts/generate-icons.sh
-```
-
-## Packaging
-
-Build:
-
-```bash
-nix build .#
-```
-
-The package installs:
-
-```text
-bin/pw-duck
-share/applications/pw-duck.desktop
-share/icons/hicolor/.../apps/pw-duck.png
-share/icons/hicolor/.../apps/pw-duck-symbolic.png
-share/doc/pw-duck/README.md
-share/doc/pw-duck/LICENSE
-```
-
-Flake app outputs:
-
-```text
-.#          pw-duck tray app
-.#tray      pw-duck tray
-.#tune-gui  pw-duck tune-gui
-.#tune      pw-duck tune
-```
-
-The Nix package builds with the `gui` feature enabled, so the graphical tuner is included. The wrapper adds `pactl` and `pw-link` to `PATH`.
-
-## AUR
-
-Arch Linux users can install or update the stable release from AUR:
+### Arch Linux / AUR
 
 ```bash
 paru -S pw-duck
 ```
 
-If `pw-duck` is already installed, the normal system update is enough after the AUR package has been updated:
+Then start `pw-duck` from your launcher or run:
 
 ```bash
-paru -Syu
+pw-duck
 ```
 
-Use the stable package `pw-duck` for normal use. A `pw-duck-git` package, if installed, follows the current Git branch instead of the tagged release and is meant for development/testing.
+### Nix
 
-The normal AUR package `pw-duck` is a full desktop build and uses:
+From this repository:
 
 ```bash
-cargo build --release --locked --features gui
-cargo test --release --locked --features gui
+nix run .#
 ```
 
-GTK4 is therefore a hard dependency for the AUR package, and `Tuner: open` works by default. The non-GUI build remains useful for development, tests, and intentional headless builds.
-
-For future releases, update the AUR checksum after the final GitHub tag exists:
+Other app outputs:
 
 ```bash
-./scripts/update-aur-checksum.sh
+nix run .#tray
+nix run .#tune
+nix run .#tune-gui
 ```
 
-The script downloads `https://github.com/geri1701/pw-duck/archive/refs/tags/v${pkgver}.tar.gz`, writes the SHA-256 checksum to `PKGBUILD` and `.SRCINFO`, and exits deliberately while the tag is not yet published. For the current release, the checksum is already set.
+### From source
+
+```bash
+cargo build --release
+cargo build --release --features gui
+```
+
+The build needs Rust plus PipeWire/pkg-config development libraries. The `gui` feature also needs GTK4.
+
+## Requirements
+
+- PipeWire with a compatible session manager, for example WirePlumber
+- PulseAudio compatibility (`pactl` must work)
+- `pw-link`
+- A StatusNotifierItem/SNI tray host
+- GTK4 for the graphical tuner
+
+KDE Plasma supports SNI natively. GNOME needs an AppIndicator/KStatusNotifierItem extension.
+
+## First run
+
+1. Join a voice call so the call playback stream exists.
+2. Start `pw-duck`.
+3. In the tray menu, choose `Source: choose`.
+4. Select the stream that contains the call audio.
+5. Enable `Ducking`.
+6. Adjust `Tuner: open` if needed.
+
+## Commands
+
+```bash
+pw-duck                 # start tray
+pw-duck tray            # start tray explicitly
+pw-duck sources         # list selectable playback streams
+pw-duck select-source 5 # select stream by sink-input index
+pw-duck status          # show current audio state
+pw-duck tune            # terminal tuner
+pw-duck tune-gui        # graphical tuner, if built with gui
+pw-duck config-path     # print config path
+```
+
+If `sources` shows a stream as `#546`, pass only the number:
+
+```bash
+pw-duck select-source 546
+```
+
+## Tuning
+
+- **Sensitivity:** how easily call speech is detected; `0%` disables detection.
+- **Ducking volume:** volume for non-call audio while speech is active.
+- **Hold:** delay before normal volume is restored after speech stops.
+
+Settings are saved to:
+
+```text
+~/.config/pw-duck/config.toml
+```
+
+## How it works
+
+While ducking is enabled, `pw-duck` creates a temporary virtual PipeWire sink and routes non-call playback through it. The selected call stream stays on the normal output path and is used only for detection.
+
+On shutdown, streams are moved back. If that cannot be done safely, the virtual sink is left alive instead of breaking active application audio.
 
 ## Troubleshooting
 
-### No tray icon visible
+### No tray icon
 
-- KDE Plasma should support SNI natively.
-- GNOME requires an active AppIndicator/KStatusNotifierItem extension.
-- If a tray host caches old icons, fully stop the old tray process and start it again.
+- On GNOME, enable an AppIndicator/KStatusNotifierItem extension.
+- Restart `pw-duck` if your tray host cached an old icon.
 
-### No suitable source visible
+### No call stream appears
 
-- The voice app must currently produce a playback stream, usually by being in a call/channel.
-- `sources` lists playback streams; microphone sources are not selected.
+- Join a call first; many apps create playback streams only while audio is active.
+- Run `pw-duck sources` and pick the stream that contains the call audio.
 
 ### Ducking does not react
 
-- Check that the correct voice source is selected.
-- Increase sensitivity in the tuner.
-- Remember: 0% sensitivity means VAD is off.
-- Check that PipeWire/PulseAudio compatibility is running and `pactl` can see streams:
+- Check the selected source.
+- Increase sensitivity.
+- Make sure sensitivity is not `0%`.
+- Run `pw-duck status`.
 
-  ```bash
-  nix run .# -- status
-  ```
+## Development
 
-### App streams do not disappear after stopping
+Use the dev shell:
 
-That can be intentional in a failure path: if streams cannot safely be moved away from the virtual sink, the virtual sink is not destroyed. This avoids killing active applications by destroying the sink underneath them.
+```bash
+direnv exec . cargo fmt --check
+direnv exec . cargo check
+direnv exec . cargo test
+direnv exec . cargo check --features gui
+```
+
+Regenerate icons after editing `assets/icons/source/*.png`:
+
+```bash
+scripts/generate-icons.sh
+```
+
+Build the Nix package:
+
+```bash
+nix build .#
+```
+
+## License
+
+MIT
