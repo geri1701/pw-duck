@@ -10,7 +10,6 @@ It is built for PipeWire desktops and controlled from a tray icon.
 - Voice-call stream selection from running playback streams
 - Tray toggle for ducking on/off
 - Sensitivity, ducking volume, and hold-time tuning
-- Terminal tuner; graphical tuner in GUI builds
 
 ## Install
 
