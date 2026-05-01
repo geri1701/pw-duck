@@ -16,6 +16,35 @@ pub fn tray_icon_pixmap() -> Vec<Icon> {
     ]
 }
 
+pub fn tray_icon_pixmap_on() -> Vec<Icon> {
+    vec![
+        icon_from_argb(
+            16,
+            include_bytes!("../assets/icons/pixmap/pw-duck-on-16.argb"),
+        ),
+        icon_from_argb(
+            22,
+            include_bytes!("../assets/icons/pixmap/pw-duck-on-22.argb"),
+        ),
+        icon_from_argb(
+            24,
+            include_bytes!("../assets/icons/pixmap/pw-duck-on-24.argb"),
+        ),
+        icon_from_argb(
+            32,
+            include_bytes!("../assets/icons/pixmap/pw-duck-on-32.argb"),
+        ),
+        icon_from_argb(
+            48,
+            include_bytes!("../assets/icons/pixmap/pw-duck-on-48.argb"),
+        ),
+        icon_from_argb(
+            64,
+            include_bytes!("../assets/icons/pixmap/pw-duck-on-64.argb"),
+        ),
+    ]
+}
+
 fn icon_from_argb(size: i32, data: &'static [u8]) -> Icon {
     debug_assert_eq!(data.len(), (size * size * 4) as usize);
     Icon {

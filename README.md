@@ -171,6 +171,21 @@ Command 'cargo' not found; attempting execution with nix run...
 
 That fetches only Cargo ad hoc, not the required PipeWire/pkg-config development environment. Typical failures are missing `.pc` files such as `pipewire-0.3.pc`; with the GUI feature also `glib-2.0.pc`, `gtk4.pc`, `cairo.pc`, and related files.
 
+## Icon assets
+
+The source images for generated app and tray icons are:
+
+```text
+assets/icons/source/pw-duck.png     # Ducking OFF / app icon
+assets/icons/source/pw-duck-on.png  # Ducking ON tray icon
+```
+
+Edit only those files. The `hicolor` PNGs, historical `pw-duck-symbolic.png` aliases, and tray pixmap `.argb` blobs are generated artifacts. Regenerate them with:
+
+```bash
+scripts/generate-icons.sh
+```
+
 ## Packaging
 
 Build:

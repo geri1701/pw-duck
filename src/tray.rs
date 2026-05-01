@@ -372,6 +372,14 @@ impl PwDuckTray {
         self.message = "Quitting …".into();
         self.send(TrayCommand::Quit);
     }
+
+    fn current_icon_pixmap(&self) -> Vec<ksni::Icon> {
+        if self.ducking_switch_checked() {
+            icons::tray_icon_pixmap_on()
+        } else {
+            icons::tray_icon_pixmap()
+        }
+    }
 }
 
 impl ksni::Tray for PwDuckTray {
@@ -408,12 +416,12 @@ impl ksni::Tray for PwDuckTray {
     }
 
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
-        icons::tray_icon_pixmap()
+        self.current_icon_pixmap()
     }
 
     fn tool_tip(&self) -> ksni::ToolTip {
         ksni::ToolTip {
-            icon_pixmap: icons::tray_icon_pixmap(),
+            icon_pixmap: self.current_icon_pixmap(),
             title: self.title(),
             description: format!(
                 "{}\nDetails: {}\nSource: {}",

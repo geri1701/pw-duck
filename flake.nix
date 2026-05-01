@@ -29,7 +29,7 @@
       {
         packages.default = pkgs.rustPlatform.buildRustPackage {
           pname = "pw-duck";
-          version = "0.2.3";
+          version = "0.2.4";
           src = source;
 
           cargoLock.lockFile = ./Cargo.lock;
@@ -113,6 +113,8 @@
             wireplumber
             gtk4
             desktop-file-utils
+            imagemagick
+            perl
             llvmPackages.clang
             llvmPackages.libclang
           ];
